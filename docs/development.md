@@ -1,379 +1,669 @@
-# SMS Messaging Platform - Development Guide
+# Development Setup Guide
 
-## 🎯 Quick Start
+## Overview
 
-### Prerequisites
-- **Java 17+** - OpenJDK or Oracle JDK
-- **Maven 3.8+** - Build tool
-- **Docker & Docker Compose** - For infrastructure
-- **Git** - Version control
+This guide covers setting up a local development environment for the SMS Messaging Platform, including IDE configuration, debugging, and development workflows.
 
-### 1. Clone and Setup
+## Prerequisites
+
+### Required Software
+
+- **Java Development Kit (JDK)**: 17 or later
+  ```bash
+  # Verify Java version
+  java -version
+  javac -version
+  ```
+
+- **Apache Maven**: 3.8 or later
+  ```bash
+  # Verify Maven version
+  mvn -version
+  ```
+
+- **Docker & Docker Compose**: Latest stable version
+  ```bash
+  # Verify Docker
+  docker --version
+  docker-compose --version
+  ```
+
+- **Git**: For version control
+  ```bash
+  git --version
+  ```
+
+### Recommended Tools
+
+- **IDE**: IntelliJ IDEA, Eclipse, or VS Code
+- **HTTP Client**: Postman, Insomnia, or curl
+- **Database Client**: pgAdmin, DBeaver, or DataGrip
+- **Kafka Tool**: Kafka UI (included in Docker Compose)
+
+## Project Setup
+
+### 1. Clone and Initialize
+
 ```bash
-git clone https://github.com/ChrysKoum/SMS-messaging-platform.git
+# Clone the repository
+git clone <repository-url>
 cd intercomtelecom
 
-# For Windows
-scripts\dev-setup.bat
-
-# For Linux/MacOS
-chmod +x scripts/dev-setup.sh
-./scripts/dev-setup.sh
+# Verify project structure
+ls -la
 ```
 
-### 2. Start Services
+**Expected Structure**:
+```
+intercomtelecom/
+├── docker-compose.yml
+├── service-sms/
+│   ├── pom.xml
+│   ├── src/
+│   └── Dockerfile
+├── service-processor/
+│   ├── pom.xml
+│   ├── src/
+│   └── Dockerfile
+├── docs/
+├── scripts/
+└── README.md
+```
 
-**Terminal 1 - SMS Service:**
+### 2. Environment Setup
+
+**Option A: Full Docker Development (Recommended)**
+```bash
+# Start entire platform
+docker-compose up -d
+
+# Verify services
+docker-compose ps
+```
+
+**Option B: Hybrid Development**
+```bash
+# Start infrastructure only
+docker-compose up -d postgres kafka kafka-ui prometheus grafana
+
+# Services will be run locally via IDE or Maven
+```
+
+## IDE Configuration
+
+### IntelliJ IDEA Setup
+
+#### 1. Project Import
+1. Open IntelliJ IDEA
+2. Choose "Open or Import"
+3. Select the `intercomtelecom` directory
+4. Choose "Maven" when prompted
+5. Wait for Maven to download dependencies
+
+#### 2. Quarkus Plugin
+1. Go to `File → Settings → Plugins`
+2. Search for "Quarkus"
+3. Install the official Quarkus plugin
+4. Restart IDE
+
+#### 3. Run Configurations
+
+**SMS Service Configuration**:
+- **Name**: SMS Service Dev
+- **Main Class**: `io.quarkus.runner.GeneratedMain`
+- **Module**: `service-sms`
+- **Working Directory**: `$MODULE_WORKING_DIR$`
+- **Environment Variables**:
+  ```
+  QUARKUS_PROFILE=dev
+  QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://localhost:5432/smsdb
+  KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+  ```
+
+**Processor Service Configuration**:
+- **Name**: Processor Service Dev
+- **Main Class**: `io.quarkus.runner.GeneratedMain`
+- **Module**: `service-processor`
+- **Working Directory**: `$MODULE_WORKING_DIR$`
+- **Environment Variables**:
+  ```
+  QUARKUS_PROFILE=dev
+  KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+  SMS_SERVICE_URL=http://localhost:8080
+  QUARKUS_HTTP_PORT=8082
+  ```
+
+#### 4. Debug Configuration
+
+**Enable Remote Debug**:
+```bash
+# Run with debug enabled
+cd service-sms
+./mvnw quarkus:dev -Ddebug=5005
+```
+
+In IntelliJ:
+1. `Run → Edit Configurations`
+2. Add "Remote JVM Debug"
+3. Set port to `5005`
+4. Connect debugger
+
+### VS Code Setup
+
+#### 1. Extensions
+Install the following extensions:
+- **Extension Pack for Java** (Microsoft)
+- **Quarkus** (Red Hat)
+- **Docker** (Microsoft)
+- **REST Client** (Huachao Mao)
+
+#### 2. Workspace Configuration
+
+Create `.vscode/settings.json`:
+```json
+{
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "java.server.launchMode": "Standard",
+  "quarkus.tools.debug.port": 5005,
+  "quarkus.tools.starter.showExtensionDescriptions": true
+}
+```
+
+#### 3. Launch Configuration
+
+Create `.vscode/launch.json`:
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "SMS Service Debug",
+      "request": "attach",
+      "hostName": "localhost",
+      "port": 5005,
+      "projectName": "service-sms"
+    },
+    {
+      "type": "java", 
+      "name": "Processor Service Debug",
+      "request": "attach",
+      "hostName": "localhost",
+      "port": 5006,
+      "projectName": "service-processor"
+    }
+  ]
+}
+```
+
+### Eclipse Setup
+
+#### 1. Import Projects
+1. `File → Import → Existing Maven Projects`
+2. Browse to `intercomtelecom` directory
+3. Select both `service-sms` and `service-processor`
+4. Import
+
+#### 2. Install Quarkus Tools
+1. `Help → Eclipse Marketplace`
+2. Search for "Quarkus Tools"
+3. Install and restart
+
+## Development Workflows
+
+### 1. Local Development
+
+**Start Infrastructure**:
+```bash
+# Terminal 1 - Infrastructure
+docker-compose up -d postgres kafka kafka-ui prometheus grafana
+```
+
+**Run SMS Service**:
+```bash
+# Terminal 2 - SMS Service
+cd service-sms
+./mvnw quarkus:dev
+```
+
+**Run Processor Service**:
+```bash
+# Terminal 3 - Processor Service
+cd service-processor
+./mvnw quarkus:dev
+```
+
+### 2. Hot Reload Development
+
+Quarkus provides hot reload for fast development:
+
 ```bash
 cd service-sms
 ./mvnw quarkus:dev
-# Windows: mvnw.cmd quarkus:dev
 ```
 
-**Terminal 2 - Processor Service:**
+**Features**:
+- **Automatic reload** on Java file changes
+- **Live reload** for static resources
+- **Dev UI** available at http://localhost:8080/q/dev/
+- **Continuous testing** with `r` key
+
+### 3. Testing Workflow
+
+**Unit Tests**:
 ```bash
-cd service-processor
-./mvnw quarkus:dev
-# Windows: mvnw.cmd quarkus:dev
+# Run all tests
+./mvnw test
+
+# Run specific test
+./mvnw test -Dtest=MessageServiceTest
+
+# Run with coverage
+./mvnw test jacoco:report
 ```
 
-### 3. Test the API
+**Integration Tests**:
 ```bash
-# Send a message
+# Run integration tests
+./mvnw verify -Dquarkus.profile=test
+
+# Run with Testcontainers
+./mvnw verify -Dquarkus.test.profile=test-containers
+```
+
+**API Testing**:
+```bash
+# Using curl
 curl -X POST http://localhost:8080/v1/messages \
   -H "Content-Type: application/json" \
-  -d '{
-    "sender": "+1234567890",
-    "recipient": "+9876543210", 
-    "text": "Hello World!"
-  }'
+  -d '{"sender":"+1234567890","recipient":"+1987654321","text":"Test"}'
 
-# Check message status
-curl http://localhost:8080/v1/messages/{messageId}
-
-# Get user messages
-curl "http://localhost:8080/v1/users/+1234567890/messages?page=0&size=10"
+# Using HTTPie
+http POST localhost:8080/v1/messages \
+  sender="+1234567890" \
+  recipient="+1987654321" \
+  text="Test message"
 ```
 
-## 🏗️ Architecture Overview
+## Database Development
 
-### System Flow
-```
-Client → SMS Service → Kafka → Processor Service → Callback → SMS Service
-```
+### 1. Database Access
 
-### Components
+**Connection Details**:
+- **Host**: localhost
+- **Port**: 5432
+- **Database**: smsdb
+- **Username**: smsuser
+- **Password**: smspass
 
-1. **SMS Service** (Port 8080)
-   - REST API for message operations
-   - PostgreSQL persistence
-   - Kafka message publishing
-   - Delivery report processing
+**Connection via psql**:
+```bash
+# Connect to database
+docker exec -it sms-postgres psql -U smsuser -d smsdb
 
-2. **Processor Service** (Port 8082)
-   - Kafka message consumption
-   - SMS delivery simulation
-   - HTTP callbacks to SMS Service
-
-3. **Infrastructure**
-   - PostgreSQL (Port 5432)
-   - Kafka with KRaft (Port 9092)
-   - Kafka UI (Port 8081)
-
-## 📡 API Reference
-
-### Send Message
-```http
-POST /v1/messages
-Content-Type: application/json
-
-{
-  "sender": "+1234567890",
-  "recipient": "+9876543210",
-  "text": "Hello World!"
-}
+# Common queries
+\dt                          -- List tables
+SELECT * FROM messages;      -- View messages
+SELECT * FROM flyway_schema_history;  -- View migrations
 ```
 
-**Response:** `202 Accepted`
-```json
-{
-  "id": "uuid",
-  "sender": "+1234567890",
-  "recipient": "+9876543210",
-  "text": "Hello World!",
-  "status": "PENDING",
-  "created_at": "2024-01-01T12:00:00",
-  "updated_at": "2024-01-01T12:00:00"
-}
-```
+### 2. Database Migrations
 
-### Get Message
-```http
-GET /v1/messages/{messageId}
-```
+**Flyway Migrations** are located in `service-sms/src/main/resources/db/migration/`:
 
-### Get User Messages
-```http
-GET /v1/users/{phoneNumber}/messages?page=0&size=20&status=SENT
-```
-
-### Internal Callback (Processor → SMS Service)
-```http
-POST /v1/internal/delivery-report
-Content-Type: application/json
-
-{
-  "message_id": "uuid",
-  "status": "SENT|FAILED",
-  "failure_reason": "Optional error message"
-}
-```
-
-## 🔧 Development
-
-### Project Structure
-```
-intercomtelecom/
-├── service-sms/                 # SMS Service
-│   ├── src/main/java/com/intercom/sms/
-│   │   ├── api/                 # REST controllers & DTOs
-│   │   ├── domain/              # Entities & repositories
-│   │   ├── service/             # Business logic
-│   │   └── messaging/           # Kafka integration
-│   ├── src/main/resources/
-│   │   ├── application.properties
-│   │   └── db/migration/        # Flyway scripts
-│   └── Dockerfile
-├── service-processor/           # Processor Service
-│   ├── src/main/java/com/intercom/processor/
-│   │   ├── consumer/            # Kafka consumers
-│   │   ├── service/             # Processing logic
-│   │   └── client/              # HTTP clients
-│   └── Dockerfile
-├── docker-compose.yml           # Infrastructure
-├── docs/                        # Documentation
-└── scripts/                     # Utility scripts
-```
-
-### Key Technologies
-
-- **Quarkus** - Supersonic, subatomic Java framework
-- **Hibernate ORM with Panache** - Simplified data access
-- **Kafka Reactive Messaging** - Async communication
-- **PostgreSQL** - Persistent storage
-- **Jackson** - JSON processing
-- **Bean Validation** - Input validation
-- **OpenAPI/Swagger** - API documentation
-
-### Database Schema
-
-**Messages Table:**
 ```sql
+-- V1__Initial_schema.sql
 CREATE TABLE messages (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sender VARCHAR(20) NOT NULL,
     recipient VARCHAR(20) NOT NULL,
-    text VARCHAR(1600) NOT NULL,
-    status VARCHAR(10) NOT NULL DEFAULT 'PENDING',
-    failure_reason VARCHAR(500),
+    text TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    failure_reason TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX idx_messages_status ON messages(status);
+CREATE INDEX idx_messages_sender ON messages(sender);
+CREATE INDEX idx_messages_recipient ON messages(recipient);
 ```
 
-### Kafka Topics
+**Add New Migration**:
+1. Create file: `V2__Add_new_feature.sql`
+2. Write SQL changes
+3. Restart application (Flyway runs automatically)
 
-- **sms.requests** - SMS processing requests
-- **sms.retries.dead** - Failed message retries (DLQ)
+### 3. Database Testing
 
-## 🧪 Testing
+**Test Data Setup**:
+```sql
+-- Insert test messages
+INSERT INTO messages (sender, recipient, text, status) VALUES 
+  ('+1234567890', '+1987654321', 'Test message 1', 'PENDING'),
+  ('+1555000000', '+1444000000', 'Test message 2', 'SENT'),
+  ('+1777000000', '+1888000000', 'Test message 3', 'FAILED');
+```
 
-### Unit Tests
+## Kafka Development
+
+### 1. Kafka UI Access
+
+**Kafka UI**: http://localhost:8081
+
+**Features**:
+- Browse topics and partitions
+- View message content
+- Monitor consumer groups
+- Topic management
+
+### 2. Topic Management
+
+**List Topics**:
 ```bash
-cd service-sms
-./mvnw test
-
-cd service-processor
-./mvnw test
+docker exec -it sms-kafka kafka-topics \
+  --bootstrap-server localhost:9092 --list
 ```
 
-### Integration Tests
+**Create Topic**:
 ```bash
-./mvnw verify -Dquarkus.profile=test
+docker exec -it sms-kafka kafka-topics \
+  --bootstrap-server localhost:9092 \
+  --create --topic sms.requests \
+  --partitions 3 --replication-factor 1
 ```
 
-### Manual Testing
-
-**1. Start infrastructure:**
+**View Messages**:
 ```bash
-docker-compose up -d postgres kafka
+docker exec -it sms-kafka kafka-console-consumer \
+  --bootstrap-server localhost:9092 \
+  --topic sms.requests --from-beginning
 ```
 
-**2. Test message flow:**
+### 3. Message Testing
+
+**Produce Test Message**:
 ```bash
-# Send message
-MESSAGE_ID=$(curl -s -X POST http://localhost:8080/v1/messages \
-  -H "Content-Type: application/json" \
-  -d '{"sender": "+1234567890", "recipient": "+9876543210", "text": "Test"}' \
-  | jq -r '.id')
+docker exec -it sms-kafka kafka-console-producer \
+  --bootstrap-server localhost:9092 \
+  --topic sms.requests
 
-# Check status (should be PENDING initially)
-curl http://localhost:8080/v1/messages/$MESSAGE_ID
-
-# Wait a few seconds for processing
-sleep 5
-
-# Check status again (should be SENT or FAILED)
-curl http://localhost:8080/v1/messages/$MESSAGE_ID
+# Then type JSON message:
+{"id":"test-123","sender":"+1234567890","recipient":"+1987654321","text":"Test"}
 ```
 
-## 📊 Monitoring
+## Code Quality and Standards
 
-### Health Checks
-- SMS Service: http://localhost:8080/q/health
-- Processor Service: http://localhost:8082/q/health
+### 1. Code Formatting
 
-### Metrics (Prometheus format)
-- SMS Service: http://localhost:8080/q/metrics
-- Processor Service: http://localhost:8082/q/metrics
-
-### API Documentation
-- Swagger UI: http://localhost:8080/q/swagger-ui
-- OpenAPI Spec: http://localhost:8080/q/openapi
-
-### Logs
+**Maven Formatter Plugin** (configured in pom.xml):
 ```bash
-# SMS Service logs
-docker-compose logs -f sms-service
+# Format code
+./mvnw formatter:format
 
-# Processor Service logs
-docker-compose logs -f processor-service
-
-# Kafka logs
-docker-compose logs -f kafka
+# Validate formatting
+./mvnw formatter:validate
 ```
 
-## 🐳 Docker Development
+**IDE Formatting**:
+- Import code style from `ide-config/` directory
+- Enable format on save
 
-### Build Images
+### 2. Static Analysis
+
+**SpotBugs**:
 ```bash
-# Build all services
-docker-compose build
-
-# Build specific service
-docker build -t sms-service ./service-sms
+./mvnw spotbugs:check
 ```
 
-### Run with Docker
+**Checkstyle**:
 ```bash
-# Start everything
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop everything
-docker-compose down
+./mvnw checkstyle:check
 ```
 
-## 🔍 Troubleshooting
-
-### Common Issues
-
-**1. Port already in use:**
+**PMD**:
 ```bash
-# Check what's using the port
-netstat -tulpn | grep :8080
-# Kill the process or use different ports
+./mvnw pmd:check
 ```
 
-**2. Database connection failed:**
+### 3. Dependency Management
+
+**Check for Updates**:
 ```bash
-# Check PostgreSQL is running
-docker-compose ps postgres
-# Check connection
-docker-compose exec postgres psql -U sms -d smsdb -c "SELECT 1"
+./mvnw versions:display-dependency-updates
+./mvnw versions:display-plugin-updates
 ```
 
-**3. Kafka connection failed:**
+**Security Audit**:
 ```bash
-# Check Kafka is running
-docker-compose ps kafka
-# Test Kafka connection
-docker-compose exec kafka kafka-topics --bootstrap-server localhost:9092 --list
+./mvnw org.owasp:dependency-check-maven:check
 ```
 
-**4. Maven build failures:**
-```bash
-# Clean and rebuild
-./mvnw clean install -DskipTests
-# Update dependencies
-./mvnw dependency:resolve
-```
+## Debugging and Troubleshooting
 
-### Debug Mode
+### 1. Application Debugging
 
-**Enable debug logging:**
+**Enable Debug Logging**:
 ```properties
-# In application.properties
+# application.properties
+quarkus.log.level=DEBUG
 quarkus.log.category."com.intercom".level=DEBUG
 ```
 
-**Remote debugging:**
+**Remote Debugging**:
 ```bash
-# SMS Service
+# Start with debug port
 ./mvnw quarkus:dev -Ddebug=5005
 
-# Processor Service
+# Or with custom port
 ./mvnw quarkus:dev -Ddebug=5006
 ```
 
-## 🚀 Production Deployment
+### 2. Common Issues
 
-### Environment Variables
+**Port Already in Use**:
 ```bash
+# Find process using port
+lsof -i :8080
+
+# Kill process
+kill -9 <PID>
+
+# Or use different port
+./mvnw quarkus:dev -Dquarkus.http.port=8081
+```
+
+**Database Connection Issues**:
+```bash
+# Check if PostgreSQL is running
+docker-compose ps postgres
+
+# View PostgreSQL logs
+docker-compose logs postgres
+
+# Test connection
+docker exec -it sms-postgres pg_isready -U smsuser
+```
+
+**Kafka Connection Issues**:
+```bash
+# Check Kafka status
+docker-compose ps kafka
+
+# View Kafka logs
+docker-compose logs kafka
+
+# Test connectivity
+docker exec -it sms-kafka kafka-broker-api-versions \
+  --bootstrap-server localhost:9092
+```
+
+### 3. Performance Profiling
+
+**JVM Profiling**:
+```bash
+# Start with JFR profiling
+./mvnw quarkus:dev -Djvm.args="-XX:+FlightRecorder -XX:StartFlightRecording=duration=60s,filename=profile.jfr"
+```
+
+**Memory Analysis**:
+```bash
+# Heap dump
+jcmd <PID> GC.run_finalization
+jcmd <PID> VM.gc
+jcmd <PID> GC.dump /tmp/heapdump.hprof
+```
+
+## Configuration Management
+
+### 1. Environment-Specific Properties
+
+**application.properties** (default):
+```properties
 # Database
-QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://prod-db:5432/smsdb
-QUARKUS_DATASOURCE_USERNAME=sms_user
-QUARKUS_DATASOURCE_PASSWORD=secure_password
+quarkus.datasource.db-kind=postgresql
+quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/smsdb
 
 # Kafka
-KAFKA_BOOTSTRAP_SERVERS=prod-kafka:9092
+kafka.bootstrap.servers=localhost:9092
 
-# Processor callback
-CALLBACK_URL=http://sms-service:8080/v1/internal/delivery-report
+# Logging
+quarkus.log.level=INFO
 ```
 
-### Docker Compose Production
+**application-dev.properties** (development):
+```properties
+# Development overrides
+quarkus.log.level=DEBUG
+quarkus.hibernate-orm.log.sql=true
+quarkus.dev-ui.always-include=true
+```
+
+**application-test.properties** (testing):
+```properties
+# Test overrides
+quarkus.datasource.db-kind=h2
+quarkus.datasource.jdbc.url=jdbc:h2:mem:testdb
+```
+
+### 2. Configuration Profiles
+
+**Activate Profile**:
 ```bash
-# Use production compose file
-docker-compose -f docker-compose.prod.yml up -d
+# Via Maven
+./mvnw quarkus:dev -Dquarkus.profile=dev
+
+# Via Environment Variable
+export QUARKUS_PROFILE=dev
+./mvnw quarkus:dev
+
+# Via System Property
+java -Dquarkus.profile=dev -jar app.jar
 ```
 
-### Health Check Script
+## Continuous Integration
+
+### 1. Pre-commit Hooks
+
+Create `.git/hooks/pre-commit`:
 ```bash
 #!/bin/bash
-# health-check.sh
-curl -f http://localhost:8080/q/health || exit 1
-curl -f http://localhost:8082/q/health || exit 1
+echo "Running pre-commit checks..."
+
+# Run tests
+./mvnw test
+if [ $? -ne 0 ]; then
+  echo "Tests failed. Commit aborted."
+  exit 1
+fi
+
+# Check formatting
+./mvnw formatter:validate
+if [ $? -ne 0 ]; then
+  echo "Code formatting issues. Run 'mvn formatter:format' and try again."
+  exit 1
+fi
+
+echo "Pre-commit checks passed."
 ```
 
-## 📚 Additional Resources
+### 2. GitHub Actions Example
 
-- [Quarkus Documentation](https://quarkus.io/guides/)
-- [Kafka Documentation](https://kafka.apache.org/documentation/)
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
-- [OpenAPI Specification](https://swagger.io/specification/)
+`.github/workflows/ci.yml`:
+```yaml
+name: CI
 
-## 🤝 Contributing
+on: [push, pull_request]
 
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/amazing-feature`
-3. Make changes and add tests
-4. Commit: `git commit -m 'Add amazing feature'`
-5. Push: `git push origin feature/amazing-feature`
-6. Submit pull request
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Cache Maven packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        
+    - name: Run tests
+      run: ./mvnw verify
+```
 
-## 📄 License
+## Development Best Practices
 
-This project is licensed under the MIT License - see the [LICENSE](../LICENSE) file for details.
+### 1. Code Organization
+
+- **Package Structure**: Follow domain-driven design
+- **Naming Conventions**: Use clear, descriptive names
+- **Method Size**: Keep methods small and focused
+- **Class Responsibilities**: Single Responsibility Principle
+
+### 2. Testing Practices
+
+- **Unit Tests**: Test business logic in isolation
+- **Integration Tests**: Test component interactions
+- **API Tests**: Test external interfaces
+- **Test Coverage**: Aim for 80%+ coverage
+
+### 3. Git Workflow
+
+```bash
+# Feature development
+git checkout -b feature/sms-retry-mechanism
+git add .
+git commit -m "feat: add SMS retry mechanism"
+git push origin feature/sms-retry-mechanism
+
+# Create pull request for review
+```
+
+**Commit Message Format**:
+```
+feat: add new feature
+fix: bug fix
+docs: documentation update
+test: add tests
+refactor: code refactoring
+```
+
+For deployment instructions, see the [Deployment Guide](deployment.md).
