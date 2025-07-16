@@ -1,7 +1,6 @@
 {
-  "dashboard": {
-    "id": null,
-    "title": "SMS Platform Metrics",
+  "id": null,
+  "title": "SMS Platform Metrics",
     "tags": ["sms", "microservices"],
     "style": "dark",
     "timezone": "browser",
@@ -191,5 +190,4 @@
         "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
       }
     ]
-  }
 }

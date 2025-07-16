@@ -48,6 +48,7 @@ public class MessageService {
         // Create and persist message
         Message message = new Message(request.getSender(), request.getRecipient(), request.getText());
         messageRepository.persist(message);
+        messageRepository.flush(); // Ensure timestamps are set
         
         LOG.infof("Message persisted with ID: %s", message.getId());
         
