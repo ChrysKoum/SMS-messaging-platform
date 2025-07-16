@@ -46,8 +46,8 @@ This guide covers setting up a local development environment for the SMS Messagi
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd intercomtelecom
+git clone https://github.com/ChrysKoum/SMS-messaging-platform.git
+cd SMS-messaging-platform
 
 # Verify project structure
 ls -la
@@ -55,7 +55,7 @@ ls -la
 
 **Expected Structure**:
 ```
-intercomtelecom/
+SMS-messaging-platform/
 ├── docker-compose.yml
 ├── service-sms/
 │   ├── pom.xml
@@ -96,7 +96,7 @@ docker-compose up -d postgres kafka kafka-ui prometheus grafana
 #### 1. Project Import
 1. Open IntelliJ IDEA
 2. Choose "Open or Import"
-3. Select the `intercomtelecom` directory
+3. Select the `SMS-messaging-platform` directory
 4. Choose "Maven" when prompted
 5. Wait for Maven to download dependencies
 
@@ -200,7 +200,7 @@ Create `.vscode/launch.json`:
 
 #### 1. Import Projects
 1. `File → Import → Existing Maven Projects`
-2. Browse to `intercomtelecom` directory
+2. Browse to `SMS-messaging-platform` directory
 3. Select both `service-sms` and `service-processor`
 4. Import
 

@@ -28,8 +28,8 @@ This guide covers deploying the SMS Messaging Platform in various environments, 
 
 ```bash
 # Clone repository
-git clone <repository-url>
-cd intercomtelecom
+git clone https://github.com/ChrysKoum/SMS-messaging-platform.git
+cd SMS-messaging-platform
 
 # Start entire platform
 docker-compose up -d
