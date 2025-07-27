@@ -39,20 +39,15 @@ public class MessageService {
     /**
      * Send a new SMS message
      */
-    @Transactional
     @Timed(value = "sms_send_duration", description = "Time taken to send SMS message")
     @Counted(value = "sms_send_attempts", description = "Number of SMS send attempts")
     public MessageResponse sendMessage(SendMessageRequest request) {
         LOG.infof("Sending SMS from %s to %s", request.getSender(), request.getRecipient());
         
-        // Create and persist message
-        Message message = new Message(request.getSender(), request.getRecipient(), request.getText());
-        messageRepository.persist(message);
-        messageRepository.flush(); // Ensure timestamps are set
+        // Step 1: Persist message in separate transaction
+        Message message = persistMessage(request);
         
-        LOG.infof("Message persisted with ID: %s", message.getId());
-        
-        // Send to message broker for processing
+        // Step 2: Send to Kafka outside transaction to avoid thread conflicts
         try {
             messageProducer.sendSmsRequest(message);
             LOG.infof("Message %s sent to processing queue", message.getId());
@@ -62,15 +57,46 @@ public class MessageService {
             
         } catch (Exception e) {
             LOG.errorf(e, "Failed to send message %s to processing queue", message.getId());
-            // Mark as failed if we can't queue it
-            message.markAsFailed("Failed to queue message for processing: " + e.getMessage());
-            messageRepository.persist(message);
+            // Mark as failed in separate transaction
+            markMessageAsFailed(message.getId(), "Failed to queue message for processing: " + e.getMessage());
             
             // Increment failure counter
             meterRegistry.counter("sms_queue_failed_total").increment();
+            
+            // Update the message object for response
+            message.markAsFailed("Failed to queue message for processing: " + e.getMessage());
         }
         
         return mapToResponse(message);
+    }
+
+    /**
+     * Persist message in separate transaction
+     */
+    @Transactional
+    private Message persistMessage(SendMessageRequest request) {
+        Message message = new Message(request.getSender(), request.getRecipient(), request.getText());
+        messageRepository.persist(message);
+        messageRepository.flush(); // Ensure timestamps are set
+        
+        LOG.infof("Message persisted with ID: %s", message.getId());
+        return message;
+    }
+
+    /**
+     * Mark message as failed in separate transaction
+     */
+    @Transactional
+    private void markMessageAsFailed(UUID messageId, String reason) {
+        Optional<Message> messageOpt = messageRepository.findByIdOptional(messageId);
+        if (messageOpt.isPresent()) {
+            Message message = messageOpt.get();
+            message.markAsFailed(reason);
+            messageRepository.persist(message);
+            LOG.infof("Message %s marked as FAILED: %s", messageId, reason);
+        } else {
+            LOG.warnf("Message not found when marking as failed: %s", messageId);
+        }
     }
 
     /**
